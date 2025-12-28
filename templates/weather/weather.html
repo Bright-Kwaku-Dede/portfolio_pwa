@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard - Quaqu'sPortfolio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='weather_css/weather.css') }}">
+    <style>
+        /* Back button styling */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+        .back-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← Back to Portfolio</a>
+    
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🌤️ Weather Dashboard</h1>
+            <p>Get real-time weather information for any city</p>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="city-input" 
+                    placeholder="Enter city name (e.g., London, New York)"
+                    autocomplete="off"
+                >
+                <button id="search-btn">Search</button>
+            </div>
+            <div id="error-message" class="error-message"></div>
+        </section>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading weather data...</p>
+        </div>
+
+        <!-- Current Weather Section -->
+        <section id="current-weather" class="current-weather" style="display: none;">
+            <div class="weather-main">
+                <div class="location">
+                    <h2 id="city-name">---</h2>
+                    <p id="weather-description">---</p>
+                </div>
+                <div class="temperature">
+                    <img id="weather-icon" src="" alt="Weather icon">
+                    <span id="temp-value">--</span>
+                    <span class="temp-unit">°C</span>
+                </div>
+            </div>
+            
+            <div class="weather-details">
+                <div class="detail-item">
+                    <span class="detail-label">Feels Like</span>
+                    <span class="detail-value" id="feels-like">--°C</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Humidity</span>
+                    <span class="detail-value" id="humidity">--%</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Wind Speed</span>
+                    <span class="detail-value" id="wind-speed">-- m/s</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Pressure</span>
+                    <span class="detail-value" id="pressure">-- hPa</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5-Day Forecast Section -->
+        <section id="forecast-section" class="forecast-section" style="display: none;">
+            <h3>5-Day Forecast</h3>
+            <div id="forecast-container" class="forecast-container">
+                <!-- Forecast cards will be inserted here -->
+            </div>
+        </section>
+
+        <!-- Search History Section -->
+        <section class="history-section">
+            <h3>Recent Searches</h3>
+            <div id="history-container" class="history-container">
+                <p class="no-history">No recent searches</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='weather_js/weather.js') }}"></script>
+</body>
+</html>

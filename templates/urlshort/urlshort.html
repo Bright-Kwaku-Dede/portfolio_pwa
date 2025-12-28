@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - My Portfolio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='urlshort_css/urlshort.css') }}">
+</head>
+<body>
+    <a href="/" class="back-btn">← Back to Portfolio</a>
+    
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔗 URL Shortener</h1>
+            <p>Transform long URLs into short, shareable links</p>
+        </header>
+
+        <!-- Shorten URL Section -->
+        <section class="shorten-section">
+            <h2>Shorten Your URL</h2>
+            <form id="shorten-form">
+                <div class="form-group">
+                    <label for="original-url">Long URL</label>
+                    <input 
+                        type="url" 
+                        id="original-url" 
+                        placeholder="https://example.com/very/long/url/here"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-code">Custom Short Code (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="custom-code" 
+                        placeholder="my-link"
+                        maxlength="20"
+                        pattern="[a-zA-Z0-9-_]+"
+                        title="Only letters, numbers, hyphens, and underscores"
+                    >
+                    <small>Leave blank for random code</small>
+                </div>
+
+                <button type="submit" class="btn-primary">Shorten URL</button>
+            </form>
+
+            <!-- Result Display -->
+            <div id="result-section" class="result-section" style="display: none;">
+                <div class="result-card">
+                    <h3>✅ URL Shortened Successfully!</h3>
+                    <div class="url-display">
+                        <input type="text" id="short-url-display" readonly>
+                        <button class="btn-copy" onclick="copyToClipboard()">📋 Copy</button>
+                    </div>
+                    <div class="original-url">
+                        <strong>Original:</strong> <span id="original-url-display"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- URLs List -->
+        <section class="urls-section">
+            <h2>Your Shortened URLs</h2>
+            
+            <div id="loading" class="loading" style="display: none;">
+                Loading URLs...
+            </div>
+
+            <div id="urls-container"></div>
+
+            <div id="no-urls" class="no-urls" style="display: none;">
+                <p>No shortened URLs yet. Create your first one above!</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='urlshort_js/urlshort.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Contact Messages{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <h1 class="section-title">A Project We Can Work On</h1>
+        
+        <div id="loading" class="loading">Loading messages...</div>
+        
+        <div id="messages-container" class="messages-container" style="display: none;">
+            <div id="messages-list"></div>
+        </div>
+        
+        <div id="error-message" class="error-message" style="display: none;"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Fetch and display contact messages
+async function loadMessages() {
+    const loading = document.getElementById('loading');
+    const container = document.getElementById('messages-container');
+    const messagesList = document.getElementById('messages-list');
+    const errorMessage = document.getElementById('error-message');
+    
+    try {
+        const response = await fetch('/api/contacts');
+        const data = await response.json();
+        
+        loading.style.display = 'none';
+        
+        if (data.success && data.contacts.length > 0) {
+            container.style.display = 'block';
+            
+            messagesList.innerHTML = data.contacts.map(contact => `
+                <div class="message-card">
+                    <div class="message-header">
+                        <h3>${escapeHtml(contact.name)}</h3>
+                        <span class="message-date">${formatDate(contact.created_at)}</span>
+                    </div>
+                    <p class="message-email">
+                        <strong>Email:</strong> ${escapeHtml(contact.email)}
+                    </p>
+                    <p class="message-text">${escapeHtml(contact.message)}</p>
+                </div>
+            `).join('');
+        } else if (data.success && data.contacts.length === 0) {
+            container.style.display = 'block';
+            messagesList.innerHTML = '<p class="no-messages">No messages yet.</p>';
+        } else {
+            errorMessage.textContent = 'Failed to load messages.';
+            errorMessage.style.display = 'block';
+        }
+    } catch (error) {
+        loading.style.display = 'none';
+        errorMessage.textContent = 'Error loading messages: ' + error.message;
+        errorMessage.style.display = 'block';
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Load messages when page loads
+document.addEventListener('DOMContentLoaded', loadMessages);
+</script>
+{% endblock %}
