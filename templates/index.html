@@ -5,18 +5,24 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero">
-    <div class="container">
-      <h1 class="hero-title">Hi, I'm Quaqu Bryt</h1>
-      <p class="hero-subtitle">Full-Stack DevOps Engineer | Industrial Mechanic turned Developer</p>
-        <a href="#contact" class="btn">Get in Touch</a>
-    </div>
+  <div class="container">
+    <h1 class="hero-title">Hi, I’m Quaqu</h1>
+    <p class="hero-subtitle">
+      Full-Stack Developer building practical, production-ready web applications.<br>
+      Former Industrial Mechanic with a strong systems-thinking mindset.
+    </p>
+    <a href="#work" class="btn">View My Work</a>
+  </div>
 </section>
+
 
 <!-- About Section -->
 <section id="about" class="section">
     <div class="container">
         <h2 class="section-title">About Me</h2>
         <div class="about-content">
+            <!-- In index.html -->
+
     <p>
         I'm a Full-Stack DevOps Engineer with a unique journey—transitioning from Industrial Mechanics to software development. 
         As a father of four (ages 6-16), I've proven that dedication and skills matter more than traditional paths. 
@@ -78,6 +84,10 @@
     </div>
 
 </section>
+<a href="dashboard.html" class="project-card">
+  <h3>Unified Data Dashboard</h3>
+  <p>Interactive analytics platform with 9 tools</p>
+</a>
 <!-- CTA Section -->
 <section class="section" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); margin: 3rem 0;">
     <div class="container" style="text-align: center; padding: 3rem 1rem; color: white;">
@@ -94,9 +104,41 @@
 
 <!-- Work/Projects Section -->
 <section id="work" class="section section-gray">
-    <div class="container">
-        <h2 class="section-title">My Work</h2>
-        <div class="projects-grid">
+  <div class="container">
+    <h2 class="section-title">Featured Work</h2>
+
+    <div class="projects-grid">
+      {% for project in featured_projects %}
+        <div class="project-card featured">
+          <div class="project-image">
+            <div class="placeholder-image">{{ project.icon }}</div>
+          </div>
+
+          <h3>{{ project.title }}</h3>
+
+          <p class="project-description">
+            {{ project.description }}
+          </p>
+
+          <p class="project-details">
+            {{ project.details }}
+          </p>
+
+          <div class="project-tags">
+            {% for tag in project.tags %}
+              <span class="tag">{{ tag }}</span>
+            {% endfor %}
+          </div>
+
+          <a href="{{ project.url }}" class="btn" style="margin-top: 1rem;">
+            View Project →
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
             
             <!-- Project 1 -->
             <div class="project-card">
@@ -171,6 +213,40 @@
     <a href="/urlshort" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">View Project →</a>
 </div>
 </section>
+
+
+<!-- Project 7: Spare Parts Inventory Tracker -->
+ <div class="project-card featured">
+  <div class="project-image">
+    <div class="placeholder-image">📦</div>
+  </div>
+
+  <h3>Spare Parts Inventory Tracker</h3>
+
+  <p class="project-description">
+    A real-world inventory management system designed to prevent critical spare-part shortages
+    in industrial environments. Built to mirror warehouse workflows and operational constraints.
+  </p>
+
+  <p class="project-details">
+    Features include SKU-based search, low-stock alerts, and persistent inventory tracking.
+    This project demonstrates backend business logic, relational data modeling,
+    and production-focused UX decisions.
+  </p>
+
+  <div class="project-tags">
+    <span class="tag">Flask</span>
+    <span class="tag">SQLite</span>
+    <span class="tag">Inventory Systems</span>
+    <span class="tag">CRUD</span>
+  </div>
+
+  <a href="/inventory" class="btn" style="margin-top: 1rem;">
+    View Project →
+  </a>
+</div>
+
+
 
 <!-- Contact Section -->
 <section id="contact" class="section">

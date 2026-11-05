@@ -1,579 +1,334 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import sqlite3
-from datetime import datetime
 import os
+import time
+import sqlite3
+from contextlib import closing
+from datetime import datetime
+
 import requests
+from flask import Flask, render_template, request, jsonify, send_from_directory  # type: ignore
 
-# Explicitly set static and template folders
-app = Flask(__name__, 
-            static_folder='static',
-            static_url_path='/static',
-            template_folder='templates')
+app = Flask(__name__)
 
-# Weather API Configuration
-# IMPORTANT: Replace with your actual API key
-WEATHER_API_KEY = "42acc1014f52253403e8036232212026"
-WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5"
+# -------------------------
+# Core Pages
+# -------------------------
 
-# Database setup
-def init_db():
-    """Initialize the database with all tables"""
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    # Contacts table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            message TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Weather search history table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS weather_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            city TEXT NOT NULL,
-            country TEXT,
-            temperature REAL,
-            weather_description TEXT,
-            searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Tasks table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT,
-            category TEXT DEFAULT 'Personal',
-            priority TEXT DEFAULT 'Medium',
-            due_date TEXT,
-            completed INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # URL Shortener table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS urls (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            original_url TEXT NOT NULL,
-            short_code TEXT UNIQUE NOT NULL,
-            clicks INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
 
-# Initialize database on startup
-init_db()
-
-# ============ PORTFOLIO ROUTES ============
-
-@app.route('/')
+@app.route("/")
 def index():
-    """Render the main portfolio page"""
-    return render_template('index.html')
+    featured_projects = [
+        {
+            "title": "Spare Parts Inventory Tracker",
+            "icon": "📦",
+            "description": (
+                "Inventory management system designed to prevent critical spare-part "
+                "shortages in industrial environments."
+            ),
+            "details": (
+                "Includes SKU search, low-stock alerts, and persistent inventory tracking. "
+                "Demonstrates backend business logic and database design."
+            ),
+            "tags": ["Flask", "SQLite", "Inventory Systems", "CRUD"],
+            "url": "/inventory"
+        }
+    ]
 
-@app.route('/admin')
-def admin():
-    """Render the admin page to view contact messages"""
-    return render_template('admin.html')
+    return render_template(
+        "index.html",
+        featured_projects=featured_projects
+    )
 
-@app.route('/api/contact', methods=['POST'])
-def submit_contact():
-    """Handle contact form submission"""
+
+
+
+@app.route("/admin")           # Add this line
+@app.route("/dashboard")
+@app.route("/dashboard.html")
+def dashboard():
+    return render_template("dashboard.html")
+
+
+# -------------------------
+# Feature Pages
+# -------------------------
+
+@app.route("/inventory")
+def inventory():
+    return render_template("inventory/inventory.html")
+
+
+@app.route("/tasks")
+def tasks():
+    return render_template("tasks/tasks.html")
+
+
+@app.route("/urlshort")
+def urlshort():
+    return render_template("urlshort/urlshort.html")
+
+
+@app.route("/weather")
+def weather():
+    return render_template("weather/weather.html")
+
+
+# -------------------------
+# API Endpoints
+# -------------------------
+
+# -------------------------
+# Weather (Open-Meteo, no API key needed)
+# -------------------------
+
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
+
+# WMO weather code -> (description, OpenWeatherMap icon prefix), so weather.js works unchanged
+WMO = {
+    0: ("Clear sky", "01"), 1: ("Mainly clear", "02"), 2: ("Partly cloudy", "03"),
+    3: ("Overcast", "04"), 45: ("Fog", "50"), 48: ("Rime fog", "50"),
+    51: ("Light drizzle", "09"), 53: ("Drizzle", "09"), 55: ("Heavy drizzle", "09"),
+    56: ("Freezing drizzle", "09"), 57: ("Freezing drizzle", "09"),
+    61: ("Light rain", "10"), 63: ("Rain", "10"), 65: ("Heavy rain", "10"),
+    66: ("Freezing rain", "10"), 67: ("Freezing rain", "10"),
+    71: ("Light snow", "13"), 73: ("Snow", "13"), 75: ("Heavy snow", "13"),
+    77: ("Snow grains", "13"), 80: ("Rain showers", "09"), 81: ("Rain showers", "09"),
+    82: ("Violent rain showers", "09"), 85: ("Snow showers", "13"), 86: ("Snow showers", "13"),
+    95: ("Thunderstorm", "11"), 96: ("Thunderstorm with hail", "11"),
+    99: ("Thunderstorm with hail", "11"),
+}
+
+
+def describe(code, is_day=True):
+    desc, prefix = WMO.get(code, ("Unknown", "03"))
+    return desc, prefix + ("d" if is_day else "n")
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_weather_table():
+    with closing(get_db()) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS weather_searches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                city TEXT NOT NULL,
+                country TEXT,
+                temperature REAL,
+                weather_description TEXT,
+                searched_at TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+
+
+init_weather_table()
+
+_cache = {}
+CACHE_SECONDS = 600
+
+US_STATES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii",
+    "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming",
+}
+
+
+def matches_hint(place, hint):
+    """True if the hint (state, province, country, or country code) fits this place."""
+    h = hint.strip().lower()
+    wanted = {h}
+    if h.upper() in US_STATES:
+        wanted.add(US_STATES[h.upper()].lower())
+    fields = {
+        str(place.get(k, "")).lower()
+        for k in ("admin1", "admin2", "admin3", "country", "country_code")
+    }
+    return bool(wanted & fields)
+
+
+def find_place(query):
+    """'Albany' or 'Albany, Georgia' or 'Albany, GA, US' -> best matching place, or None."""
+    parts = [p.strip() for p in query.split(",") if p.strip()]
+    if not parts:
+        return None
+    name, hints = parts[0], parts[1:]
+
+    geo = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": name, "count": 20, "language": "en"},
+        timeout=8,
+    )
+    geo.raise_for_status()
+    for place in geo.json().get("results") or []:
+        if all(matches_hint(place, h) for h in hints):
+            return place
+    return None
+
+
+def get_weather(query):
+    """Returns (place, weather_json), or None if no place matches.
+    Raises requests.RequestException if the service is unreachable."""
+    key = query.lower()
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+
+    place = find_place(query)
+    if not place:
+        return None
+    # "Albany, Georgia" so the page and history show which Albany was used
+    place["label"] = (
+        f"{place['name']}, {place['admin1']}" if place.get("admin1") else place["name"]
+    )
+
+    wx = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": place["latitude"],
+            "longitude": place["longitude"],
+            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                       "is_day,weather_code,surface_pressure,wind_speed_10m",
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+            "wind_speed_unit": "ms",
+            "forecast_days": 5,
+            "timezone": "auto",
+        },
+        timeout=8,
+    )
+    wx.raise_for_status()
+    result = (place, wx.json())
+    _cache[key] = (time.time(), result)
+    return result
+
+
+def lookup_or_error(city):
+    """Shared by the endpoints. Returns (data, error_response)."""
+    if not city:
+        return None, (jsonify(success=False, error="No city provided"), 400)
     try:
-        data = request.get_json()
-        name = data.get('name')
-        email = data.get('email')
-        message = data.get('message')
-        
-        # Validation
-        if not name or not email or not message:
-            return jsonify({'success': False, 'error': 'All fields are required'}), 400
-        
-        # Save to database
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)',
-            (name, email, message)
+        data = get_weather(city)
+    except requests.RequestException:
+        return None, (jsonify(success=False, error="Weather service unavailable. Try again."), 502)
+    if data is None:
+        return None, (jsonify(success=False, error=f"City '{city}' not found"), 404)
+    return data, None
+
+
+@app.route("/api/weather/current", methods=["GET"])
+def get_current_weather():
+    city = request.args.get("city", "").strip()
+    data, err = lookup_or_error(city)
+    if err:
+        return err
+    place, wx = data
+    cur = wx["current"]
+    description, icon = describe(cur["weather_code"], bool(cur["is_day"]))
+    country = place.get("country", "")
+    label = place.get("label", place["name"])
+
+    with closing(get_db()) as conn:
+        conn.execute("DELETE FROM weather_searches WHERE lower(city) = lower(?)", (label,))
+        conn.execute(
+            "INSERT INTO weather_searches (city, country, temperature, weather_description, searched_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (label, country, round(cur["temperature_2m"]), description,
+             datetime.now().isoformat(timespec="seconds")),
         )
         conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Thank you! Your message has been sent.'})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============ URL SHORTENER ROUTES ============
+    return jsonify(
+        success=True,
+        city=label,
+        country=country,
+        description=description,
+        temperature=round(cur["temperature_2m"]),
+        feels_like=round(cur["apparent_temperature"]),
+        humidity=cur["relative_humidity_2m"],
+        wind_speed=round(cur["wind_speed_10m"], 1),
+        pressure=round(cur["surface_pressure"]),
+        icon=icon,
+    )
 
-import string
-import random
 
-def generate_short_code(length=6):
-    """Generate a random short code"""
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
-
-@app.route('/urlshort')
-def urlshort_app():
-    """Render the URL shortener page"""
-    return render_template('urlshort/urlshort.html')
-
-@app.route('/api/urls', methods=['POST'])
-def create_short_url():
-    """Create a shortened URL"""
-    try:
-        data = request.get_json()
-        original_url = data.get('url')
-        custom_code = data.get('custom_code', '').strip()
-        
-        if not original_url:
-            return jsonify({'success': False, 'error': 'URL is required'}), 400
-        
-        # Validate URL format
-        if not (original_url.startswith('http://') or original_url.startswith('https://')):
-            original_url = 'https://' + original_url
-        
-        # Generate or use custom short code
-        if custom_code:
-            short_code = custom_code
-            # Check if custom code already exists
-            conn = sqlite3.connect('database.db')
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM urls WHERE short_code = ?', (short_code,))
-            if cursor.fetchone():
-                conn.close()
-                return jsonify({'success': False, 'error': 'Custom code already taken'}), 400
-            conn.close()
-        else:
-            # Generate unique short code
-            short_code = generate_short_code()
-            conn = sqlite3.connect('database.db')
-            cursor = conn.cursor()
-            # Ensure uniqueness
-            while True:
-                cursor.execute('SELECT id FROM urls WHERE short_code = ?', (short_code,))
-                if not cursor.fetchone():
-                    break
-                short_code = generate_short_code()
-            conn.close()
-        
-        # Save to database
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO urls (original_url, short_code)
-            VALUES (?, ?)
-        ''', (original_url, short_code))
-        url_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        short_url = f"http://localhost:5000/s/{short_code}"
-        
-        return jsonify({
-            'success': True,
-            'id': url_id,
-            'original_url': original_url,
-            'short_code': short_code,
-            'short_url': short_url
+@app.route("/api/weather/forecast", methods=["GET"])
+def get_weather_forecast():
+    city = request.args.get("city", "").strip()
+    data, err = lookup_or_error(city)
+    if err:
+        return err
+    _, wx = data
+    d = wx["daily"]
+    forecasts = []
+    for i, day in enumerate(d["time"]):
+        description, icon = describe(d["weather_code"][i])
+        hi, lo = d["temperature_2m_max"][i], d["temperature_2m_min"][i]
+        forecasts.append({
+            "date": day,
+            "icon": icon,
+            "description": description,
+            "temperature": round((hi + lo) / 2),
+            "temp_max": round(hi),
+            "temp_min": round(lo),
         })
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify(success=True, forecasts=forecasts)
 
-@app.route('/api/urls', methods=['GET'])
-def get_urls():
-    """Get all shortened URLs"""
-    try:
-        conn = sqlite3.connect('database.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM urls ORDER BY created_at DESC')
-        urls = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        
-        # Add full short URL to each
-        for url in urls:
-            url['short_url'] = f"http://localhost:5000/s/{url['short_code']}"
-        
-        return jsonify({'success': True, 'urls': urls})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/s/<short_code>')
-def redirect_short_url(short_code):
-    """Redirect short code to original URL"""
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        
-        # Get original URL and increment clicks
-        cursor.execute('SELECT original_url FROM urls WHERE short_code = ?', (short_code,))
-        result = cursor.fetchone()
-        
-        if result:
-            original_url = result[0]
-            # Increment click count
-            cursor.execute('UPDATE urls SET clicks = clicks + 1 WHERE short_code = ?', (short_code,))
-            conn.commit()
-            conn.close()
-            
-            # Redirect to original URL
-            from flask import redirect
-            return redirect(original_url)
-        else:
-            conn.close()
-            return "Short URL not found", 404
-    
-    except Exception as e:
-        return f"Error: {str(e)}", 500
-
-@app.route('/api/urls/<int:url_id>', methods=['DELETE'])
-def delete_url(url_id):
-    """Delete a shortened URL"""
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM urls WHERE id = ?', (url_id,))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'URL deleted successfully'})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/weather/history', methods=['GET'])
+@app.route("/api/weather/history", methods=["GET"])
 def get_weather_history():
-    """Get recent weather search history"""
-    try:
-        conn = sqlite3.connect('database.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT city, country, temperature, weather_description, searched_at
-            FROM weather_history
-            ORDER BY searched_at DESC
-            LIMIT 10
-        ''')
-        
-        history = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify({'success': True, 'history': history})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    with closing(get_db()) as conn:
+        rows = conn.execute(
+            "SELECT city, country, temperature, weather_description, searched_at "
+            "FROM weather_searches ORDER BY id DESC LIMIT 5"
+        ).fetchall()
+    return jsonify(success=True, history=[dict(r) for r in rows])
 
-def save_weather_search(city, country, temperature, weather_description):
-    """Save weather search to database"""
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO weather_history (city, country, temperature, weather_description)
-            VALUES (?, ?, ?, ?)
-        ''', (city, country, temperature, weather_description))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Error saving weather search: {e}")
 
-# ============ TASK MANAGER ROUTES ============
+@app.route("/api/inventory", methods=["GET"])
+def get_inventory():
+    return jsonify({"items": []})
 
-@app.route('/tasks')
-def tasks_app():
-    """Render the task manager page"""
-    return render_template('tasks/tasks.html')
 
-@app.route('/api/tasks', methods=['GET'])
+@app.route("/api/tasks", methods=["GET"])
+@app.route("/api/tasks/stats", methods=["GET"])
 def get_tasks():
-    """Get all tasks"""
-    try:
-        conn = sqlite3.connect('database.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM tasks ORDER BY created_at DESC')
-        tasks = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify({'success': True, 'tasks': tasks})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({
+        "tasks": [],
+        "stats": {}
+    })
 
-@app.route('/api/tasks', methods=['POST'])
-def create_task():
-    """Create a new task"""
-    try:
-        data = request.get_json()
-        title = data.get('title')
-        description = data.get('description', '')
-        category = data.get('category', 'Personal')
-        priority = data.get('priority', 'Medium')
-        due_date = data.get('due_date', '')
-        
-        if not title:
-            return jsonify({'success': False, 'error': 'Title is required'}), 400
-        
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO tasks (title, description, category, priority, due_date)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (title, description, category, priority, due_date))
-        
-        task_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'task_id': task_id, 'message': 'Task created successfully'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
-def update_task(task_id):
-    """Update a task"""
-    try:
-        data = request.get_json()
-        
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        
-        # Build update query dynamically based on provided fields
-        updates = []
-        values = []
-        
-        if 'title' in data:
-            updates.append('title = ?')
-            values.append(data['title'])
-        if 'description' in data:
-            updates.append('description = ?')
-            values.append(data['description'])
-        if 'category' in data:
-            updates.append('category = ?')
-            values.append(data['category'])
-        if 'priority' in data:
-            updates.append('priority = ?')
-            values.append(data['priority'])
-        if 'due_date' in data:
-            updates.append('due_date = ?')
-            values.append(data['due_date'])
-        if 'completed' in data:
-            updates.append('completed = ?')
-            values.append(1 if data['completed'] else 0)
-        
-        if not updates:
-            return jsonify({'success': False, 'error': 'No fields to update'}), 400
-        
-        values.append(task_id)
-        query = f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?"
-        
-        cursor.execute(query, values)
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Task updated successfully'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+# -------------------------
+# PWA Manifest
+# -------------------------
 
-@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task(task_id):
-    """Delete a task"""
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Task deleted successfully'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tasks/stats', methods=['GET'])
-def get_task_stats():
-    """Get task statistics"""
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT COUNT(*) as total FROM tasks')
-        total = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT COUNT(*) as completed FROM tasks WHERE completed = 1')
-        completed = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT COUNT(*) as pending FROM tasks WHERE completed = 0')
-        pending = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'stats': {
-                'total': total,
-                'completed': completed,
-                'pending': pending
-            }
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/contacts', methods=['GET'])
-def get_contacts():
-    """Retrieve all contact messages for admin"""
-    try:
-        conn = sqlite3.connect('database.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM contacts ORDER BY created_at DESC')
-        contacts = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify({'success': True, 'contacts': contacts})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/manifest.json')
+@app.route("/manifest.json")
 def manifest():
-    """Serve the PWA manifest file"""
-    return send_from_directory('static', 'manifest.json')
+    return send_from_directory("static", "manifest.json")
 
-@app.route('/sw.js')
+
+@app.route("/sw.js")
 def service_worker():
-    """Serve the service worker file"""
-    return send_from_directory('static/js', 'sw.js')
+    response = send_from_directory("static", "sw.js")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
-# ============ WEATHER APP ROUTES ============
 
-@app.route('/weather')
-def weather_app():
-    """Render the weather dashboard"""
-    return render_template('weather/weather.html')
+# -------------------------
+# Run App
+# -------------------------
 
-@app.route('/api/weather/current', methods=['GET'])
-def get_current_weather():
-    """Get current weather for a city"""
-    city = request.args.get('city')
-    
-    if not city:
-        return jsonify({'success': False, 'error': 'City name is required'}), 400
-    
-    try:
-        url = f"{WEATHER_BASE_URL}/weather"
-        params = {
-            'q': city,
-            'appid': WEATHER_API_KEY,
-            'units': 'metric'
-        }
-        
-        response = requests.get(url, params=params)
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            # Save to search history
-            save_weather_search(
-                city=data['name'],
-                country=data['sys']['country'],
-                temperature=data['main']['temp'],
-                weather_description=data['weather'][0]['description']
-            )
-            
-            weather_data = {
-                'success': True,
-                'city': data['name'],
-                'country': data['sys']['country'],
-                'temperature': round(data['main']['temp'], 1),
-                'feels_like': round(data['main']['feels_like'], 1),
-                'humidity': data['main']['humidity'],
-                'pressure': data['main']['pressure'],
-                'wind_speed': data['wind']['speed'],
-                'description': data['weather'][0]['description'],
-                'icon': data['weather'][0]['icon'],
-                'sunrise': data['sys']['sunrise'],
-                'sunset': data['sys']['sunset']
-            }
-            
-            return jsonify(weather_data)
-        
-        elif response.status_code == 404:
-            return jsonify({'success': False, 'error': 'City not found'}), 404
-        else:
-            return jsonify({'success': False, 'error': 'Failed to fetch weather data'}), response.status_code
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/weather/forecast', methods=['GET'])
-def get_forecast():
-    """Get 5-day forecast for a city"""
-    city = request.args.get('city')
-    
-    if not city:
-        return jsonify({'success': False, 'error': 'City name is required'}), 400
-    
-    try:
-        url = f"{WEATHER_BASE_URL}/forecast"
-        params = {
-            'q': city,
-            'appid': WEATHER_API_KEY,
-            'units': 'metric'
-        }
-        
-        response = requests.get(url, params=params)
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            daily_forecasts = []
-            seen_dates = set()
-            
-            for item in data['list']:
-                date = datetime.fromtimestamp(item['dt']).strftime('%Y-%m-%d')
-                hour = datetime.fromtimestamp(item['dt']).hour
-                
-                if date not in seen_dates and 11 <= hour <= 13:
-                    daily_forecasts.append({
-                        'date': date,
-                        'temperature': round(item['main']['temp'], 1),
-                        'temp_min': round(item['main']['temp_min'], 1),
-                        'temp_max': round(item['main']['temp_max'], 1),
-                        'description': item['weather'][0]['description'],
-                        'icon': item['weather'][0]['icon'],
-                        'humidity': item['main']['humidity']
-                    })
-                    seen_dates.add(date)
-                    
-                    if len(daily_forecasts) == 5:
-                        break
-            
-            return jsonify({
-                'success': True,
-                'city': data['city']['name'],
-                'forecasts': daily_forecasts
-            })
-        
-        else:
-            return jsonify({'success': False, 'error': 'Failed to fetch forecast'}), response.status_code
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-    
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run(debug=True)
