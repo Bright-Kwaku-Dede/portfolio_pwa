@@ -51,16 +51,28 @@
     <script>
         let scanner = null;
 
+        // Fix 1: escape text before putting it into innerHTML
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s ?? '';
+            return d.innerHTML;
+        }
+
         async function loadParts(query = '') {
-            const res = await fetch(`/api/inventory?search=${query}`);
+            // Fix 2: URL-encode the search text
+            const res = await fetch(`/api/inventory?search=${encodeURIComponent(query)}`);
             const data = await res.json();
             const container = document.getElementById('inventoryList');
+            if (!data.parts || data.parts.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No parts found.</p>';
+                return;
+            }
             container.innerHTML = data.parts.map(p => `
                 <div class="card mb-2 shadow-sm ${p.quantity <= p.min_stock_level ? 'low-stock' : ''}">
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
-                            <strong>${p.part_name}</strong> <br>
-                            <small class="text-muted">SKU: ${p.sku} | Loc: ${p.location}</small>
+                            <strong>${esc(p.part_name)}</strong> <br>
+                            <small class="text-muted">SKU: ${esc(p.sku)} | Loc: ${esc(p.location)}</small>
                         </div>
                         <div class="text-end">
                             <span class="badge ${p.quantity <= p.min_stock_level ? 'bg-danger' : 'bg-success'}">
@@ -102,7 +114,13 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
-            if(await res.json()) { location.reload(); }
+            const result = await res.json();
+            // Fix 3: only reload when the save actually succeeded
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.error || 'Could not save part');
+            }
         };
 
         document.getElementById('searchInput').oninput = (e) => loadParts(e.target.value);

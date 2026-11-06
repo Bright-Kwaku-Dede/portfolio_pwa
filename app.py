@@ -125,6 +125,69 @@ def init_weather_table():
 
 
 init_weather_table()
+# -------------------------
+# Inventory (uses the existing `inventory` table)
+# -------------------------
+
+@app.route("/api/inventory", methods=["GET"])
+def list_inventory():
+    q = request.args.get("search", "").strip()
+    sql = (
+        "SELECT part_name, sku, "
+        "COALESCE(quantity, 0) AS quantity, "
+        "COALESCE(location, '') AS location, "
+        "COALESCE(category, 'General') AS category, "
+        "COALESCE(min_stock_level, 2) AS min_stock_level "
+        "FROM inventory"
+    )
+    params = ()
+    if q:
+        like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        sql += " WHERE part_name LIKE ? ESCAPE '\\' OR sku LIKE ? ESCAPE '\\'"
+        params = (like, like)
+    # low-stock parts first, then alphabetical
+    sql += (" ORDER BY (COALESCE(quantity, 0) <= COALESCE(min_stock_level, 2)) DESC,"
+            " part_name COLLATE NOCASE")
+    with closing(get_db()) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return jsonify(success=True, parts=[dict(r) for r in rows])
+
+
+@app.route("/api/inventory", methods=["POST"])
+def add_part():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("part_name", "")).strip()
+    sku = str(data.get("sku", "")).strip()
+    if not name or not sku:
+        return jsonify(success=False, error="Part name and SKU are required"), 400
+    try:
+        qty = int(data.get("quantity") or 0)
+        min_stock = int(data.get("min_stock_level", 2))
+    except (TypeError, ValueError):
+        return jsonify(success=False, error="Quantity must be a whole number"), 400
+    if qty < 0 or min_stock < 0:
+        return jsonify(success=False, error="Quantity can't be negative"), 400
+
+    try:
+        with closing(get_db()) as conn:
+            dup = conn.execute(
+                "SELECT 1 FROM inventory WHERE lower(sku) = lower(?)", (sku,)
+            ).fetchone()
+            if dup:
+                return jsonify(success=False, error=f"SKU '{sku}' already exists"), 409
+            conn.execute(
+                "INSERT INTO inventory "
+                "(part_name, sku, category, quantity, min_stock_level, location) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (name, sku,
+                 str(data.get("category", "General")).strip() or "General",
+                 qty, min_stock,
+                 str(data.get("location", "")).strip()),
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        return jsonify(success=False, error=f"SKU '{sku}' already exists"), 409
+    return jsonify(success=True), 201
 
 _cache = {}
 CACHE_SECONDS = 600
@@ -296,9 +359,7 @@ def get_weather_history():
     return jsonify(success=True, history=[dict(r) for r in rows])
 
 
-@app.route("/api/inventory", methods=["GET"])
-def get_inventory():
-    return jsonify({"items": []})
+
 
 
 @app.route("/api/tasks", methods=["GET"])
