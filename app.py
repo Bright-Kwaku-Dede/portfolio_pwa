@@ -1,6 +1,9 @@
 import os
 import time
 import sqlite3
+import re
+import secrets
+from urllib.parse import urlparse
 from contextlib import closing
 from datetime import datetime
 
@@ -439,6 +442,102 @@ def task_stats():
     total, completed = row["total"], row["completed"]
     return jsonify(success=True,
                    stats={"total": total, "completed": completed, "pending": total - completed})
+    # -------------------------
+# URL Shortener (uses the existing `urls` table)
+# -------------------------
+
+CODE_RE = re.compile(r"^[A-Za-z0-9_-]{1,20}$")
+CODE_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def is_http_url(value):
+    try:
+        p = urlparse(value)
+    except ValueError:
+        return False
+    return p.scheme in ("http", "https") and bool(p.netloc)
+
+
+def short_url_for(code):
+    return request.host_url + "s/" + code
+
+
+@app.route("/api/urls", methods=["GET"])
+def list_urls():
+    with closing(get_db()) as conn:
+        rows = conn.execute(
+            "SELECT id, original_url, short_code, COALESCE(clicks, 0) AS clicks, created_at "
+            "FROM urls ORDER BY id DESC"
+        ).fetchall()
+    urls = []
+    for r in rows:
+        d = dict(r)
+        d["short_url"] = short_url_for(d["short_code"])
+        # CURRENT_TIMESTAMP is stored in UTC without a zone marker
+        d["created_at"] = (d["created_at"] or "").replace(" ", "T") + "Z" if d["created_at"] else None
+        urls.append(d)
+    return jsonify(success=True, urls=urls)
+
+
+@app.route("/api/urls", methods=["POST"])
+def create_url():
+    data = request.get_json(silent=True) or {}
+    original = str(data.get("url", "")).strip()
+    custom = str(data.get("custom_code", "")).strip()
+
+    if not is_http_url(original):
+        return jsonify(success=False, error="Enter a valid http:// or https:// URL"), 400
+    if custom and not CODE_RE.match(custom):
+        return jsonify(success=False,
+                       error="Custom code: 1-20 letters, numbers, hyphens or underscores"), 400
+
+    with closing(get_db()) as conn:
+        if custom:
+            code = custom
+            try:
+                conn.execute("INSERT INTO urls (original_url, short_code) VALUES (?, ?)",
+                             (original, code))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                return jsonify(success=False, error=f"Code '{code}' is already taken"), 409
+        else:
+            for _ in range(10):
+                code = "".join(secrets.choice(CODE_CHARS) for _ in range(6))
+                try:
+                    conn.execute("INSERT INTO urls (original_url, short_code) VALUES (?, ?)",
+                                 (original, code))
+                    conn.commit()
+                    break
+                except sqlite3.IntegrityError:
+                    continue
+            else:
+                return jsonify(success=False, error="Could not generate a unique code"), 500
+
+    return jsonify(success=True, short_url=short_url_for(code), original_url=original), 201
+
+
+@app.route("/api/urls/<int:url_id>", methods=["DELETE"])
+def delete_url(url_id):
+    with closing(get_db()) as conn:
+        cur = conn.execute("DELETE FROM urls WHERE id = ?", (url_id,))
+        conn.commit()
+    if cur.rowcount == 0:
+        return jsonify(success=False, error="URL not found"), 404
+    return jsonify(success=True)
+
+
+@app.route("/s/<code>")
+def follow_short_url(code):
+    with closing(get_db()) as conn:
+        row = conn.execute(
+            "SELECT original_url FROM urls WHERE short_code = ?", (code,)
+        ).fetchone()
+        if row is None or not is_http_url(row["original_url"]):
+            return "Short link not found", 404
+        conn.execute("UPDATE urls SET clicks = COALESCE(clicks, 0) + 1 WHERE short_code = ?", (code,))
+        conn.commit()
+    return redirect(row["original_url"], code=302)
+
 
 
 # -------------------------
