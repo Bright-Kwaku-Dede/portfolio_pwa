@@ -362,13 +362,83 @@ def get_weather_history():
 
 
 
+# -------------------------
+# Tasks (uses the existing `tasks` table)
+# -------------------------
+
+PRIORITIES = {"low": "Low", "medium": "Medium", "high": "High"}
+
+
 @app.route("/api/tasks", methods=["GET"])
+def list_tasks():
+    with closing(get_db()) as conn:
+        rows = conn.execute(
+            "SELECT id, title, COALESCE(description, '') AS description, "
+            "COALESCE(category, 'Personal') AS category, "
+            "COALESCE(priority, 'Medium') AS priority, "
+            "COALESCE(due_date, '') AS due_date, "
+            "COALESCE(completed, 0) AS completed "
+            "FROM tasks ORDER BY completed ASC, id DESC"
+        ).fetchall()
+    return jsonify(success=True, tasks=[dict(r) for r in rows])
+
+
+@app.route("/api/tasks", methods=["POST"])
+def add_task():
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title", "")).strip()
+    if not title:
+        return jsonify(success=False, error="Title is required"), 400
+    priority = PRIORITIES.get(str(data.get("priority", "Medium")).strip().lower(), "Medium")
+    category = str(data.get("category", "Personal")).strip() or "Personal"
+    with closing(get_db()) as conn:
+        conn.execute(
+            "INSERT INTO tasks (title, description, category, priority, due_date) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (title, str(data.get("description", "")).strip(), category, priority,
+             str(data.get("due_date", "")).strip() or None),
+        )
+        conn.commit()
+    return jsonify(success=True), 201
+
+
+@app.route("/api/tasks/<int:task_id>", methods=["PUT"])
+def update_task(task_id):
+    data = request.get_json(silent=True) or {}
+    if "completed" not in data:
+        return jsonify(success=False, error="Nothing to update"), 400
+    with closing(get_db()) as conn:
+        cur = conn.execute(
+            "UPDATE tasks SET completed = ? WHERE id = ?",
+            (1 if data["completed"] else 0, task_id),
+        )
+        conn.commit()
+    if cur.rowcount == 0:
+        return jsonify(success=False, error="Task not found"), 404
+    return jsonify(success=True)
+
+
+@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    with closing(get_db()) as conn:
+        cur = conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        conn.commit()
+    if cur.rowcount == 0:
+        return jsonify(success=False, error="Task not found"), 404
+    return jsonify(success=True)
+
+
 @app.route("/api/tasks/stats", methods=["GET"])
-def get_tasks():
-    return jsonify({
-        "tasks": [],
-        "stats": {}
-    })
+def task_stats():
+    with closing(get_db()) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS total, "
+            "COALESCE(SUM(CASE WHEN COALESCE(completed, 0) = 1 THEN 1 ELSE 0 END), 0) AS completed "
+            "FROM tasks"
+        ).fetchone()
+    total, completed = row["total"], row["completed"]
+    return jsonify(success=True,
+                   stats={"total": total, "completed": completed, "pending": total - completed})
 
 
 # -------------------------
