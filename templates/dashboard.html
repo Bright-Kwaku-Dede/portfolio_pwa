@@ -1,34 +1,136 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Dashboard - Your Name</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <nav>
-    <a href="index.html">← Back to Portfolio</a>
-  </nav>
-  
-  <section class="dashboard-hero">
-    <h1>Unified Data Analytics Platform</h1>
-    <p>9 powerful public data tools in one comprehensive dashboard</p>
-  </section>
-  
-  <section class="dashboard-embed">
-    <iframe 
-      src=" https://ughigha.shinyapps.io/unified_master_dashboard/" 
-      width="100%" 
-      height="900px"
-      frameborder="0">
-    </iframe>
-  </section>
-  
-  <section class="dashboard-about">
-    <h2>About This Project</h2>
-    <p>This dashboard demonstrates my ability to create production-ready data products...</p>
-    <!-- Add your description -->
-  </section>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Unified Data Dashboard - Quaqu's Portfolio{% endblock %}
+
+{% block content %}
+<style>
+  .dash-page { padding: 3rem 0; }
+  .dash-back { display: inline-block; margin-bottom: 1.5rem; text-decoration: none; }
+  .dash-lead { font-size: 1.15rem; color: #475569; max-width: 720px; margin-bottom: 2rem; }
+
+  .dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 2rem 0; }
+  .dash-stat { background: #fff; border-radius: 12px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .dash-stat-number { display: block; font-size: 2rem; font-weight: 700; color: #2563eb; }
+  .dash-stat-label { color: #64748b; font-size: 0.95rem; }
+
+  .dash-shot { width: 100%; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.15); margin: 1rem 0 2rem; }
+
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin: 1.5rem 0 2.5rem; }
+  .dash-card { background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .dash-card h3 { margin: 0.25rem 0 0.5rem; }
+  .dash-card p { color: #475569; margin: 0; line-height: 1.55; }
+  .dash-icon { font-size: 2rem; }
+
+  .dash-notes { background: #fff7ed; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 1.25rem 1.5rem; margin: 2rem 0; }
+  .dash-notes h3 { margin-top: 0; }
+  .dash-notes ul { margin: 0.5rem 0 0; padding-left: 1.25rem; line-height: 1.7; }
+
+  .dash-badges { margin: 1rem 0 2rem; }
+  .dash-badge { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 0.35rem 0.9rem; border-radius: 999px; margin: 0.25rem 0.25rem 0 0; font-size: 0.9rem; }
+
+  .dash-cta { text-align: center; margin-top: 2rem; }
+</style>
+
+<section class="section dash-page">
+  <div class="container">
+
+    <a href="/" class="dash-back">← Back to Portfolio</a>
+
+    <h1 class="section-title">Unified Data Dashboard</h1>
+    <p class="dash-lead">
+      An interactive R Shiny app that brings several small data tools together in one place.
+      It runs on shinyapps.io, separate from this Flask site.
+    </p>
+
+    <div class="dash-stats">
+      <div class="dash-stat">
+        <span class="dash-stat-number">8</span>
+        <span class="dash-stat-label">Interactive tools</span>
+      </div>
+      <div class="dash-stat">
+        <span class="dash-stat-number">1</span>
+        <span class="dash-stat-label">Live data feed (Yahoo Finance)</span>
+      </div>
+      <div class="dash-stat">
+        <span class="dash-stat-number">R Shiny</span>
+        <span class="dash-stat-label">Built with</span>
+      </div>
+    </div>
+
+    <!-- Save a screenshot to static/images/dashboard-screenshot.png.
+         Until the file exists, the image hides itself. -->
+    <img src="{{ url_for('static', filename='images/dashboard-screenshot.png') }}"
+         alt="Screenshot of the Unified Data Dashboard"
+         class="dash-shot"
+         onerror="this.style.display='none'">
+
+    <h2>What's inside</h2>
+    <div class="dash-grid">
+
+      <div class="dash-card">
+        <span class="dash-icon">💊</span>
+        <h3>Disease Risk Calculator</h3>
+        <p>Estimates a cardiovascular risk score from age, blood pressure, cholesterol, smoking status and BMI using a simplified point system. Educational only, not medical advice.</p>
+      </div>
+
+      <div class="dash-card">
+        <span class="dash-icon">📈</span>
+        <h3>Stock Trends</h3>
+        <p>Loads daily prices from Yahoo Finance for a ticker and date range, with a price chart and summary figures.</p>
+      </div>
+
+      <div class="dash-card">
+        <span class="dash-icon">📊</span>
+        <h3>Sentiment Analysis</h3>
+        <p>Scores text by counting positive and negative words from a small built-in word list. A simple lexicon approach, not a trained model.</p>
+      </div>
+
+      <div class="dash-card">
+        <span class="dash-icon">💵</span>
+        <h3>Wage Policy Simulator</h3>
+        <p>Compares a chosen hourly wage with median rent in five US cities, using illustrative figures and a flat 15% tax assumption.</p>
+      </div>
+
+      <div class="dash-card">
+        <span class="dash-icon">⚠️</span>
+        <h3>History</h3>
+        <p>A map of colonial-era events and a list of Black inventors. The map and chart figures are currently illustrative placeholders, not sourced data.</p>
+      </div>
+
+      <div class="dash-card">
+        <span class="dash-icon">🧪</span>
+        <h3>Starter Demos</h3>
+        <p>Three small demos: a fixed-formula home price estimate, a rule-based temperature outlook, and an income-minus-expenses budget check.</p>
+      </div>
+
+    </div>
+
+    <div class="dash-notes">
+      <h3>Data notes</h3>
+      <ul>
+        <li><strong>Live data:</strong> only the Stock Trends tab pulls live data (Yahoo Finance). It can fail if Yahoo is unavailable.</li>
+        <li><strong>Illustrative data:</strong> the Wage Policy, History and Starter Demo tabs use sample or simplified numbers, not official statistics.</li>
+        <li><strong>Not professional advice:</strong> the risk score and stock chart are for learning and exploration, not medical or financial decisions.</li>
+      </ul>
+    </div>
+
+    <h2>Built with</h2>
+    <div class="dash-badges">
+      <span class="dash-badge">R</span>
+      <span class="dash-badge">Shiny</span>
+      <span class="dash-badge">Plotly</span>
+      <span class="dash-badge">Leaflet</span>
+      <span class="dash-badge">quantmod</span>
+      <span class="dash-badge">dplyr</span>
+    </div>
+
+    <div class="dash-cta">
+      <a href="https://ughigha.shinyapps.io/unified_master_dashboard/"
+         target="_blank" rel="noopener" class="btn">
+        Launch the Dashboard →
+      </a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

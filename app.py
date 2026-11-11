@@ -1,3 +1,5 @@
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, Response
 import os
 import time
 import sqlite3
@@ -8,7 +10,7 @@ from contextlib import closing
 from datetime import datetime
 
 import requests
-from flask import Flask, render_template, request, jsonify, send_from_directory  # type: ignore
+
 
 app = Flask(__name__)
 
@@ -17,9 +19,28 @@ app = Flask(__name__)
 # -------------------------
 
 
+
+
+
+
+# 2) Replace your whole index() route (the @app.route("/") block) with this:
 @app.route("/")
 def index():
     featured_projects = [
+        {
+            "title": "Unified Data Dashboard",
+            "icon": "📊",
+            "description": (
+                "Interactive R Shiny analytics platform combining several public "
+                "data tools in one app."
+            ),
+            "details": (
+                "Includes sentiment analysis, a cardiovascular risk calculator, "
+                "stock trends, and a minimum wage policy simulator."
+            ),
+            "tags": ["R Shiny", "Plotly", "Leaflet"],
+            "url": "/dashboard",
+        },
         {
             "title": "Spare Parts Inventory Tracker",
             "icon": "📦",
@@ -32,19 +53,48 @@ def index():
                 "Demonstrates backend business logic and database design."
             ),
             "tags": ["Flask", "SQLite", "Inventory Systems", "CRUD"],
-            "url": "/inventory"
-        }
+            "url": "/inventory",
+        },
+        {
+            "title": "Task Manager",
+            "icon": "✅",
+            "description": (
+                "Full CRUD application with task categories, priority levels, "
+                "due dates, and statistics."
+            ),
+            "details": "Demonstrates database design and RESTful API development.",
+            "tags": ["CRUD", "SQLite", "REST API"],
+            "url": "/tasks",
+        },
+        {
+            "title": "Weather Dashboard",
+            "icon": "🌤️",
+            "description": (
+                "Live weather data from the Open-Meteo API with 5-day forecasts "
+                "and search history."
+            ),
+            "details": "Demonstrates third-party API integration, caching, and data display.",
+            "tags": ["API Integration", "Open-Meteo", "Real-time Data"],
+            "url": "/weather",
+        },
+        {
+            "title": "URL Shortener",
+            "icon": "🔗",
+            "description": (
+                "Link shortener with custom short codes and click tracking."
+            ),
+            "details": "Demonstrates backend routing, redirects, and data persistence.",
+            "tags": ["Python", "Flask", "SQLite"],
+            "url": "/urlshort",
+        },
     ]
 
-    return render_template(
-        "index.html",
-        featured_projects=featured_projects
-    )
+    return render_template("index.html", featured_projects=featured_projects)
 
 
 
 
-@app.route("/admin")           # Add this line
+         # Add this line
 @app.route("/dashboard")
 @app.route("/dashboard.html")
 def dashboard():
@@ -112,22 +162,162 @@ def get_db():
     return conn
 
 
-def init_weather_table():
+# ---- 1) Replace your existing DB_PATH line with this ----
+# Lets a host point the app at a persistent disk via the DATABASE_PATH
+# environment variable. Locally it behaves exactly as before.
+DB_PATH = os.environ.get(
+    "DATABASE_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db"),
+)
+
+
+# ---- 2) Delete init_weather_table(), init_contacts_table() and their calls,
+#         then paste this in their place (after get_db() is defined) ----
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT DEFAULT 'Personal',
+    priority TEXT DEFAULT 'Medium',
+    due_date TEXT,
+    completed INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS urls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    original_url TEXT NOT NULL,
+    short_code TEXT UNIQUE NOT NULL,
+    clicks INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    part_name TEXT NOT NULL,
+    sku TEXT UNIQUE NOT NULL,
+    category TEXT,
+    quantity INTEGER DEFAULT 0,
+    min_stock_level INTEGER DEFAULT 2,
+    location TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS weather_searches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    city TEXT NOT NULL,
+    country TEXT,
+    temperature REAL,
+    weather_description TEXT,
+    searched_at TEXT NOT NULL
+);
+"""
+
+
+def init_db():
+    folder = os.path.dirname(DB_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
     with closing(get_db()) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS weather_searches (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                city TEXT NOT NULL,
-                country TEXT,
-                temperature REAL,
-                weather_description TEXT,
-                searched_at TEXT NOT NULL
-            )
-        """)
+        conn.executescript(SCHEMA)
         conn.commit()
 
 
-init_weather_table()
+init_db()   # runs at import time, so it also runs under gunicorn
+
+
+# ---- 3) Contacts: let the table's own default set created_at (UTC) ----
+# In submit_contact(), replace the INSERT with:
+#
+#     conn.execute(
+#         "INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)",
+#         (name, email, message),
+#     )
+#
+# In list_contacts(), replace the return line with:
+#
+#     contacts = []
+#     for r in rows:
+#         d = dict(r)
+#         if d["created_at"]:
+#             d["created_at"] = d["created_at"].replace(" ", "T") + "Z"
+#         contacts.append(d)
+#     return jsonify(success=True, contacts=contacts)
+
+# ---- 3) Simple password protection for the admin side ----
+# Set ADMIN_PASSWORD as an environment variable. If it is not set,
+# the admin pages stay locked for everyone.
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+
+
+def require_admin(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        auth = request.authorization
+        ok = (
+            ADMIN_PASSWORD
+            and auth
+            and secrets.compare_digest((auth.username or "").encode(), ADMIN_USER.encode())
+            and secrets.compare_digest((auth.password or "").encode(), ADMIN_PASSWORD.encode())
+        )
+        if not ok:
+            return Response(
+                "Admin login required", 401,
+                {"WWW-Authenticate": 'Basic realm="Admin"'},
+            )
+        return view(*args, **kwargs)
+    return wrapped
+
+
+# ---- 4) Routes ----
+# Remove @app.route("/admin") from your dashboard() function, then add:
+@app.route("/admin")
+@require_admin
+def admin():
+    return render_template("admin.html")
+
+
+@app.route("/api/contact", methods=["POST"])
+def submit_contact():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name", "")).strip()
+    email = str(data.get("email", "")).strip()
+    message = str(data.get("message", "")).strip()
+
+    if not name or not email or not message:
+        return jsonify(success=False, error="Name, email and message are required"), 400
+    if "@" not in email or len(email) > 254:
+        return jsonify(success=False, error="Enter a valid email address"), 400
+    if len(name) > 100 or len(message) > 5000:
+        return jsonify(success=False, error="Name or message is too long"), 400
+
+    with closing(get_db()) as conn:
+        conn.execute(
+            "INSERT INTO contacts (name, email, message, created_at) VALUES (?, ?, ?, ?)",
+            (name, email, message, datetime.now().isoformat(timespec="seconds")),
+        )
+        conn.commit()
+    return jsonify(success=True), 201
+
+
+@app.route("/api/contacts", methods=["GET"])
+@require_admin
+def list_contacts():
+    with closing(get_db()) as conn:
+        rows = conn.execute(
+            "SELECT id, name, email, message, created_at FROM contacts ORDER BY id DESC"
+        ).fetchall()
+    return jsonify(success=True, contacts=[dict(r) for r in rows])
 # -------------------------
 # Inventory (uses the existing `inventory` table)
 # -------------------------

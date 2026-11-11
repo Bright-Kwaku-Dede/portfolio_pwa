@@ -3,6 +3,7 @@
 {% block title %}Home - Quaqu's Portfolio{% endblock %}
 
 {% block content %}
+
 <!-- Hero Section -->
 <section class="hero">
   <div class="container">
@@ -15,94 +16,76 @@
   </div>
 </section>
 
-
 <!-- About Section -->
 <section id="about" class="section">
-    <div class="container">
-        <h2 class="section-title">About Me</h2>
-        <div class="about-content">
-            <!-- In index.html -->
-
-    <p>
-        I'm a Full-Stack DevOps Engineer with a unique journey—transitioning from Industrial Mechanics to software development. 
-        As a father of four (ages 6-16), I've proven that dedication and skills matter more than traditional paths. 
+  <div class="container">
+    <h2 class="section-title">About Me</h2>
+    <div class="about-content">
+      <p>
+        I'm a Full-Stack DevOps Engineer with a unique journey—transitioning from Industrial Mechanics to software development.
+        As a father of four (ages 6-16), I've proven that dedication and skills matter more than traditional paths.
         In just one year, I've built a foundation in full-stack development, DevOps practices, and data science.
-    </p>
-    <p>
-        My mechanical background gives me a problem-solving mindset that translates perfectly to coding: 
-        breaking down complex systems, debugging efficiently, and building solutions that work. 
+      </p>
+      <p>
+        My mechanical background gives me a problem-solving mindset that translates perfectly to coding:
+        breaking down complex systems, debugging efficiently, and building solutions that work.
         I specialize in Python (Flask), JavaScript, C# (.NET/Blazor), API integration, and database design.
-    </p>
-    <p>
-        I build practical, production-ready applications that solve real problems. From task management systems 
+      </p>
+      <p>
+        I build practical, production-ready applications that solve real problems. From task management systems
         to weather dashboards and URL shorteners—every project showcases my ability to learn quickly and deliver quality work.
-    </p>
-    <p style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid #e2e8f0;">
+      </p>
+      <p style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid #e2e8f0;">
         <strong>📧 Email:</strong> Ughigha@gmail.com<br>
         <strong>📱 Phone:</strong> (XXX) 8732XX5<br>
         <strong>💼 Status:</strong> Open to opportunities
-    </p>
-</div>
+      </p>
     </div>
-    <!-- Skills Section -->
+  </div>
+</section>
+
+<!-- Skills Section -->
 <section class="section">
-    <div class="container">
-        <h2 class="section-title">Technical Skills</h2>
-        <div class="skills-grid">
-            <div class="skill-category">
-                <h3>Languages & Frameworks</h3>
-                <div class="skill-tags">
-                    <span class="skill-tag">Python</span>
-                    <span class="skill-tag">JavaScript</span>
-                    <span class="skill-tag">C#</span>
-                    <span class="skill-tag">Flask</span>
-                    <span class="skill-tag">.NET/Blazor</span>
-                    <span class="skill-tag">HTML/CSS</span>
-                </div>
-            </div>
-            
-            <div class="skill-category">
-                <h3>DevOps & Tools</h3>
-                <div class="skill-tags">
-                    <span class="skill-tag">Git</span>
-                    <span class="skill-tag">REST APIs</span>
-                    <span class="skill-tag">Database Design</span>
-                    <span class="skill-tag">SQLite</span>
-                </div>
-            </div>
-            
-            <div class="skill-category">
-                <h3>Concepts</h3>
-                <div class="skill-tags">
-                    <span class="skill-tag">Full-Stack Development</span>
-                    <span class="skill-tag">Data Science</span>
-                    <span class="skill-tag">Problem Solving</span>
-                    <span class="skill-tag">System Design</span>
-                </div>
-            </div>
+  <div class="container">
+    <h2 class="section-title">Technical Skills</h2>
+    <div class="skills-grid">
+      <div class="skill-category">
+        <h3>Languages &amp; Frameworks</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">JavaScript</span>
+          <span class="skill-tag">C#</span>
+          <span class="skill-tag">R / Shiny</span>
+          <span class="skill-tag">Flask</span>
+          <span class="skill-tag">.NET/Blazor</span>
+          <span class="skill-tag">HTML/CSS</span>
         </div>
-    </div>
+      </div>
 
-</section>
-<a href="dashboard.html" class="project-card">
-  <h3>Unified Data Dashboard</h3>
-  <p>Interactive analytics platform with 9 tools</p>
-</a>
-<!-- CTA Section -->
-<section class="section" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); margin: 3rem 0;">
-    <div class="container" style="text-align: center; padding: 3rem 1rem; color: white;">
-        <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to Build Something Amazing?</h2>
-        <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.95;">
-            I'm actively seeking opportunities in Full-Stack Development and DevOps. 
-            Let's collaborate on your next project!
-        </p>
-        <a href="#contact" class="btn" style="background: white; color: #2563eb; display: inline-block;">
-            Let's Connect
-        </a>
+      <div class="skill-category">
+        <h3>DevOps &amp; Tools</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Git</span>
+          <span class="skill-tag">REST APIs</span>
+          <span class="skill-tag">Database Design</span>
+          <span class="skill-tag">SQLite</span>
+        </div>
+      </div>
+
+      <div class="skill-category">
+        <h3>Concepts</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Full-Stack Development</span>
+          <span class="skill-tag">Data Science</span>
+          <span class="skill-tag">Problem Solving</span>
+          <span class="skill-tag">System Design</span>
+        </div>
+      </div>
     </div>
+  </div>
 </section>
 
-<!-- Work/Projects Section -->
+<!-- Work / Projects Section (cards come from FEATURED_PROJECTS in app.py) -->
 <section id="work" class="section section-gray">
   <div class="container">
     <h2 class="section-title">Featured Work</h2>
@@ -116,13 +99,8 @@
 
           <h3>{{ project.title }}</h3>
 
-          <p class="project-description">
-            {{ project.description }}
-          </p>
-
-          <p class="project-details">
-            {{ project.details }}
-          </p>
+          <p class="project-description">{{ project.description }}</p>
+          <p class="project-details">{{ project.details }}</p>
 
           <div class="project-tags">
             {% for tag in project.tags %}
@@ -130,7 +108,7 @@
             {% endfor %}
           </div>
 
-          <a href="{{ project.url }}" class="btn" style="margin-top: 1rem;">
+          <a href="{{ project.url }}" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">
             View Project →
           </a>
         </div>
@@ -139,139 +117,67 @@
   </div>
 </section>
 
-            
-            <!-- Project 1 -->
-            <div class="project-card">
-                <div class="project-image">
-                    <div class="placeholder-image">Project 1</div>
-                </div>
-                <h3>Portfolio PWA</h3>
-                   <p>A Progressive Web App showcasing my journey from Industrial Mechanics to Full-Stack Development. Features contact form, admin panel, and offline capability.</p>
-                <div class="project-tags">
-                    <span class="tag">Flask</span>
-                    <span class="tag">PWA</span>
-                    <span class="tag">SQLite</span>
-                </div>
-            </div>
-
-<!-- Project 2 -->
-<div class="project-card">
-    <div class="project-image">
-        <div class="placeholder-image">✅</div>
-    </div>
-          <h3>Task Manager</h3>
-           <p>Full CRUD application with task categorization, priority levels, due dates, and real-time statistics. Demonstrates database design and RESTful API development.</p>
-    <div class="project-tags">
-        <span class="tag">CRUD Operations</span>
-        <span class="tag">Database</span>
-        <span class="tag">Interactive</span>
-    </div>
-    <a href="/tasks" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">View Project →</a>
-</div>
-
-            
-   <!-- Project 3 -->
-<div class="project-card">
-    <div class="project-image">
-        <div class="placeholder-image">🌤️</div>
-    </div>
-          <h3>Weather Dashboard</h3>
-          <p>Live weather data from OpenWeatherMap API with 5-day forecasts, search history, and city tracking. Showcases third-party API integration and data visualization.</p>
-    <div class="project-tags">
-        <span class="tag">API Integration</span>
-        <span class="tag">Real-time Data</span>
-        <span class="tag">Responsive</span>
-    </div>
-    <a href="/weather" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">View Project →</a>
-</div>
-<!-- Project 4 -->
-<div class="project-card">
-    <div class="project-image">
-        <div class="placeholder-image">🧮</div>
-    </div>
-        <h3>Calculator App (Blazor)</h3>
-        <p>Scientific calculator built with C# and Blazor. Features calculation history and responsive design. Demonstrates cross-platform .NET development skills.</p>
-    <div class="project-tags">
-        <span class="tag">Blazor</span>
-        <span class="tag">C#</span>
-        <span class="tag">.NET</span>
-    </div>
-    <a href="http://localhost:5045/calculator" target="_blank" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">View Project →</a>
-</div>
-<!-- Project 5 -->
-<div class="project-card">
-    <div class="project-image">
-        <div class="placeholder-image">🔗</div>
-    </div>
-         <h3>URL Shortener</h3>
-         <p>Link management system with custom short codes, click tracking, and analytics. Includes redirect functionality and data persistence. Shows backend routing expertise.</p>
-    <div class="project-tags">
-        <span class="tag">Python</span>
-        <span class="tag">Link Management</span>
-        <span class="tag">Analytics</span>
-    </div>
-    <a href="/urlshort" class="btn" style="margin-top: 1rem; display: inline-block; text-decoration: none;">View Project →</a>
-</div>
+<!-- CTA Section -->
+<section class="section" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); margin: 3rem 0;">
+  <div class="container" style="text-align: center; padding: 3rem 1rem; color: white;">
+    <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to Build Something Amazing?</h2>
+    <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.95;">
+      I'm actively seeking opportunities in Full-Stack Development and DevOps.
+      Let's collaborate on your next project!
+    </p>
+    <a href="#contact" class="btn" style="background: white; color: #2563eb; display: inline-block;">
+      Let's Connect
+    </a>
+  </div>
 </section>
-
-
-<!-- Project 7: Spare Parts Inventory Tracker -->
- <div class="project-card featured">
-  <div class="project-image">
-    <div class="placeholder-image">📦</div>
-  </div>
-
-  <h3>Spare Parts Inventory Tracker</h3>
-
-  <p class="project-description">
-    A real-world inventory management system designed to prevent critical spare-part shortages
-    in industrial environments. Built to mirror warehouse workflows and operational constraints.
-  </p>
-
-  <p class="project-details">
-    Features include SKU-based search, low-stock alerts, and persistent inventory tracking.
-    This project demonstrates backend business logic, relational data modeling,
-    and production-focused UX decisions.
-  </p>
-
-  <div class="project-tags">
-    <span class="tag">Flask</span>
-    <span class="tag">SQLite</span>
-    <span class="tag">Inventory Systems</span>
-    <span class="tag">CRUD</span>
-  </div>
-
-  <a href="/inventory" class="btn" style="margin-top: 1rem;">
-    View Project →
-  </a>
-</div>
-
-
 
 <!-- Contact Section -->
 <section id="contact" class="section">
-    <div class="container">
-        <h2 class="section-title">Get In Touch</h2>
-        <form id="contact-form" class="contact-form">
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="message">Message</label>
-                <textarea id="message" name="message" rows="5" required></textarea>
-            </div>
-            
-            <button type="submit" class="btn">Send Message</button>
-            
-            <div id="form-message" class="form-message"></div>
-        </form>
-    </div>
+  <div class="container">
+    <h2 class="section-title">Get In Touch</h2>
+    <form id="contact-form" class="contact-form">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="5" required></textarea>
+      </div>
+
+      <button type="submit" class="btn">Send Message</button>
+
+      <div id="form-message" class="form-message"></div>
+    </form>
+  </div>
 </section>
+<script>
+document.getElementById('contact-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('form-message');
+  const body = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    message: document.getElementById('message').value,
+  };
+  try {
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    msg.textContent = data.success ? 'Thanks! Your message was sent.' : (data.error || 'Something went wrong.');
+    if (data.success) e.target.reset();
+  } catch (err) {
+    msg.textContent = 'Network error. Please try again.';
+  }
+});
+</script>
 {% endblock %}
